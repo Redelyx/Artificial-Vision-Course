@@ -173,7 +173,11 @@ int main(int argc, char **argv){
         //display image
         openandwait("Original Image", image, false);
 
-        downsampling2x(image);
+        //cv::Mat new_m = downsampling2x(image);
+        //openandwait("not Image", new_m, false);
+
+        sample(image, args.image_name);
+
 
     }
         return 0;
