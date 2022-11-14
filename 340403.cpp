@@ -12,18 +12,31 @@ struct ArgumentList {
     bool random_crop;
 };
 
+cv::Mat simpleBin(const cv::Mat image, int threshold)
+{
+    cv::Mat out = cv::Mat(image.rows, image.cols, image.type());
+    for (int r = 0; r < image.rows; r++) {
+        for (int c = 0; c < image.cols; c++) {
+            if ((int)image.data[(c + r * image.cols) * image.elemSize()] > threshold)
+                out.data[(c + r * image.cols) * image.elemSize()] = 255;
+            else
+                out.data[(c + r * image.cols) * image.elemSize()] = 0;
+        }
+    }
+    return out;
+}
+
 void gaussianKrnl(float sigma, int r, cv::Mat& krnl)
 {
 }
 
-void GaussianBlur(const cv::Mat& src, float sigma, int r, cv::Mat& out,
-    int stride = 1)
+void GaussianBlur(const cv::Mat& src, float sigma, int r, cv::Mat& out, int stride = 1)
 {
 }
 
-void verticalSobel(cv::Mat& krn)
+cv::Mat verticalSobel()
 {
-    krn = cv::Mat(3, 3, CV_32F);
+    cv::Mat krn = cv::Mat(3, 3, CV_32F);
     krn.at<float>(0, 0) = 1;
     krn.at<float>(0, 1) = 0;
     krn.at<float>(0, 2) = -1;
@@ -33,11 +46,12 @@ void verticalSobel(cv::Mat& krn)
     krn.at<float>(2, 0) = 1;
     krn.at<float>(2, 1) = 0;
     krn.at<float>(2, 2) = -1;
+    return krn;
 }
 
-void horizontalSobel(cv::Mat& krn)
+cv::Mat horizontalSobel()
 {
-    krn = cv::Mat(3, 3, CV_32F);
+    cv::Mat krn = cv::Mat(3, 3, CV_32F);
     krn.at<float>(0, 0) = 1;
     krn.at<float>(0, 1) = 2;
     krn.at<float>(0, 2) = 1;
@@ -47,9 +61,10 @@ void horizontalSobel(cv::Mat& krn)
     krn.at<float>(2, 0) = -1;
     krn.at<float>(2, 1) = -2;
     krn.at<float>(2, 2) = -1;
+    return krn;
 }
 
-void sobel3x3(const cv::Mat& src, cv::Mat& magn, cv::Mat& src1)
+void sobel3x3(const cv::Mat& src, cv::Mat& magn, cv::Mat& orient)
 {
 }
 
@@ -65,12 +80,35 @@ int findPeaks(const cv::Mat& magn, const cv::Mat& src, cv::Mat& out)
 
 int doubleTh(const cv::Mat& magn, cv::Mat& out, float t1, float t2)
 {
+    return 0;
 }
 
-void previousFrame(const cv::Mat image)
+cv::Mat dilation(const cv::Mat image, const cv::Mat se)
 {
 }
 
+cv::Mat erosion(const cv::Mat image, const cv::Mat se)
+{
+}
+
+cv::Mat closing(const cv::Mat image, const cv::Mat se)
+{
+}
+
+cv::Mat opening(const cv::Mat image, const cv::Mat se)
+{
+}
+
+double otsuDeviation(const cv::Mat image, int th)
+{
+}
+
+void lab1(const cv::Mat& image, std::string image_name)
+{
+    cv::Mat new_m = downsampling2x(image);
+    openandwait("downsample2x", new_m, false);
+    /*etc.etc...*/
+}
 
 void lab1a(const cv::Mat& image, std::string image_name)
 {
@@ -81,39 +119,10 @@ bool ParseInputs(ArgumentList& args, int argc, char** argv)
 {
     int c;
     args.m_wait = 0;
-    args.m_padding = 1;
-    args.u_tl = 100;
-    args.v_tl = 100;
-    args.width_crop = 100;
-    args.height_crop = 100;
-    args.random_crop = false;
-    args.ex = 0xFFFFFFFFu;
-
     while ((c = getopt(argc, argv, "hi:t:p:u:v:W:H:rx:")) != -1)
         switch (c) {
         case 'i':
             args.image_name = optarg;
-            break;
-        case 'p':
-            args.m_padding = atoi(optarg);
-            break;
-        case 'u':
-            args.u_tl = atoi(optarg);
-            break;
-        case 'v':
-            args.v_tl = atoi(optarg);
-            break;
-        case 'H':
-            args.height_crop = atoi(optarg);
-            break;
-        case 'W':
-            args.width_crop = atoi(optarg);
-            break;
-        case 'r':
-            args.random_crop = true;
-            break;
-        case 'x':
-            args.ex = (1 << atoi(optarg));
             break;
         case 't':
             args.m_wait = atoi(optarg);
@@ -128,19 +137,6 @@ bool ParseInputs(ArgumentList& args, int argc, char** argv)
                       << std::endl
                       << "   -i arg                   image name. Use %0xd format "
                          "for multiple images."
-                      << std::endl
-                      << "   -p arg                   padding size (default 1)"
-                      << std::endl
-                      << "   -u arg                   crop column (default 100)"
-                      << std::endl
-                      << "   -v arg                   crop row (default 100)"
-                      << std::endl
-                      << "   -W arg                   crop width (default 100)"
-                      << std::endl
-                      << "   -H arg                   crop height (default 100)"
-                      << std::endl
-                      << "   -r                       random crop" << std::endl
-                      << "   -x arg                   exercises (default all)"
                       << std::endl
                       << "   -t arg                   wait before next frame (ms) "
                          "[default = 0]"
@@ -159,8 +155,6 @@ int main(int argc, char** argv)
     int frame_number = 0;
     char frame_name[256];
     bool exit_loop = false;
-    int ksize = 3;
-    int stride = 1;
     unsigned char key;
     ArgumentList args;
 
@@ -173,16 +167,13 @@ int main(int argc, char** argv)
     }
 
     //---Lab2---
-	int threshold = 15;
-	int k = 5;
+    int threshold = 15;
+    int k = 5;
+    float alpha = 0.5;
     std::vector<cv::Mat> frames(k);
-
-    cv::Mat buffer;
     //----------
 
     while (!exit_loop) {
-        // generating file name
-        //
         // multi frame case
         if (args.image_name.find('%') != std::string::npos)
             sprintf(frame_name, (const char*)(args.image_name.c_str()),
@@ -196,7 +187,8 @@ int main(int argc, char** argv)
         cv::Mat image;
         if (args.image_name.find("RGGB") != std::string::npos
             || args.image_name.find("GBRG") != std::string::npos
-            || args.image_name.find("BGGR") != std::string::npos)
+            || args.image_name.find("BGGR") != std::string::npos
+            || args.image_name.find("organs") != std::string::npos)
             image = cv::imread(frame_name, CV_8UC1);
         else
             image = cv::imread(frame_name);
@@ -209,25 +201,26 @@ int main(int argc, char** argv)
         // display image
         openandwait("Original Image", image, false);
 
-        // cv::Mat new_m = downsampling2x(image);
-        // openandwait("not Image", new_m, false);
-
         cv::Mat out;
+        /*//---Lab 2---
 
-        /*if (frame_number == 0) {
-            buffer = cv::Mat(image.rows, image.cols, image.type());
-			for(int i = 0; i<frames.size(); i++){
-				frames[i] = cv::Mat(image.rows, image.cols, image.type(), cv::Scalar(0));
-			}
-        }*/
+        if (frame_number == 0) {
+                for(int i = 0; i<frames.size(); i++){
+                        frames[i] = cv::Mat(image.rows, image.cols, image.type(), cv::Scalar(0));
+                }
+}
 
+        out = simpleBgSubtraction(image, threshold);
 
-		//out = simpleBgSubtraction(image, threshold);
-		
+        out = expRunningAverageBgSubtraction(image, threshold, alpha);
+        openandwait("out", out, false);
+        */
+        int th;
+        std::cout << "Insert threshold: ";
+        std::cin >> th;
 
-		out = expRunningAverageBgSubtraction(image, threshold, 0.5);
-		openandwait("out", out, false);
-		
+        out = simpleBin(image, th);
+        openandwait("out", out, false);
 
         // wait for key or timeout
 
