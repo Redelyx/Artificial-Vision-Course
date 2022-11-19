@@ -1,120 +1,79 @@
 /*Cipriani Alice mat.340403*/
 #include "Functions.h"
 
-struct ArgumentList {
-    std::string image_name; //!< image file name
-    int m_wait; //!< waiting time
-    int m_padding;
-    int u_tl;
-    int v_tl;
-    int width_crop;
-    int height_crop;
-    unsigned int ex;
-    bool random_crop;
-};
-
-cv::Mat simpleBin(const cv::Mat image, int threshold)
+cv::Mat gaussianKrnl(float sigma, int r)
 {
-    cv::Mat out = cv::Mat(image.rows, image.cols, image.type());
-    for (int r = 0; r < image.rows; r++) {
-        for (int c = 0; c < image.cols; c++) {
-            if ((int)image.data[(c + r * image.cols) * image.elemSize()] > threshold)
-                out.data[(c + r * image.cols) * image.elemSize()] = 255;
-            else
-                out.data[(c + r * image.cols) * image.elemSize()] = 0;
-        }
+    cv::Mat krnl = cv::Mat(2 * r + 1, 1, CV_32F);
+    float sum = 0;
+    for(int i = -r; i < r+1; i++){
+        float value = 1/sqrt(2*CV_PI*sigma*sigma)*exp(-pow(i,2)/(2*pow(sigma, 2)));
+        sum+=value;
+        krnl.at<float>(i+r, 0) = value;
     }
+    krnl /= sum;
+    for(int i = 0; i<krnl.rows; i++){
+        std::cout<< krnl.at<float>(i,0) << " ";
+    }
+    std::cout << std::endl;
+    return krnl;
+}
+
+cv::Mat gaussianBlur(const cv::Mat& src, float sigma, int r, int stride = 1)
+{
+    cv::Mat krnl = gaussianKrnl(sigma, r);
+    cv::Mat tmp = conv(src, krnl, stride);
+    tmp.convertTo(tmp, CV_8UC1);
+    cv::Mat out = conv(tmp, transpose(krnl), stride); 
+    out.convertTo(out, CV_8UC1);
+    
     return out;
 }
 
-void gaussianKrnl(float sigma, int r, cv::Mat& krnl)
+void sobel3x3(const cv::Mat& src)
 {
-}
+    cv::Mat g, gx, gy, agx, agy, ag;
+    cv::Sobel(src, gx, CV_32F, 1, 0, 3);       //applica direttamente Sobel
+    cv::Sobel(src, gy, CV_32F, 0, 1, 3);
 
-void GaussianBlur(const cv::Mat& src, float sigma, int r, cv::Mat& out, int stride = 1)
-{
-}
+    // compute magnitude
+    cv::pow(gx.mul(gx) + gy.mul(gy), 0.5, g);
+    // compute orientation
+    cv::Mat orient(gx.size(), CV_32FC1); 
+    float *dest = (float *)orient.data;
+    float *srcx = (float *)gx.data;
+    float *srcy = (float *)gy.data;
+    float *magn = (float *)g.data;
+    for(int i=0; i<gx.rows*gx.cols; ++i)
+      dest[i] = atan2f(srcy[i], srcx[i]) + 2*CV_PI;
+    // scale on 0-255 range
+    cv::convertScaleAbs(gx, agx);
+    cv::convertScaleAbs(gy, agy);
+    cv::convertScaleAbs(g, ag);
+    cv::namedWindow("sobel verticale", cv::WINDOW_NORMAL);
+    cv::imshow("sobel verticale", agx);
+    cv::namedWindow("sobel orizzontale", cv::WINDOW_NORMAL);
+    cv::imshow("sobel orizzontale", agy);
+    cv::namedWindow("sobel magnitude", cv::WINDOW_NORMAL);
+    cv::imshow("sobel magnitude", ag);    
 
-cv::Mat verticalSobel()
-{
-    cv::Mat krn = cv::Mat(3, 3, CV_32F);
-    krn.at<float>(0, 0) = 1;
-    krn.at<float>(0, 1) = 0;
-    krn.at<float>(0, 2) = -1;
-    krn.at<float>(1, 0) = 2;
-    krn.at<float>(1, 1) = 0;
-    krn.at<float>(1, 2) = -2;
-    krn.at<float>(2, 0) = 1;
-    krn.at<float>(2, 1) = 0;
-    krn.at<float>(2, 2) = -1;
-    return krn;
-}
-
-cv::Mat horizontalSobel()
-{
-    cv::Mat krn = cv::Mat(3, 3, CV_32F);
-    krn.at<float>(0, 0) = 1;
-    krn.at<float>(0, 1) = 2;
-    krn.at<float>(0, 2) = 1;
-    krn.at<float>(1, 0) = 0;
-    krn.at<float>(1, 1) = 0;
-    krn.at<float>(1, 2) = 0;
-    krn.at<float>(2, 0) = -1;
-    krn.at<float>(2, 1) = -2;
-    krn.at<float>(2, 2) = -1;
-    return krn;
-}
-
-void sobel3x3(const cv::Mat& src, cv::Mat& magn, cv::Mat& orient)
-{
+    // trick to display orientation
+    cv::Mat adjMap;
+    cv::convertScaleAbs(orient, adjMap, 255 / (2*CV_PI));
+    cv::Mat falseColorsMap;
+    cv::applyColorMap(adjMap, falseColorsMap, cv::COLORMAP_JET);
+    cv::namedWindow("sobel orientation", cv::WINDOW_NORMAL);
+    cv::imshow("sobel orientation", falseColorsMap);    
 }
 
 float bilinear(const cv::Mat& src, float r, float c)
 {
-    return 0;
+    float result = 0;
+
+
+
+    return result;
 }
 
-int findPeaks(const cv::Mat& magn, const cv::Mat& src, cv::Mat& out)
-{
-    return 0;
-}
-
-int doubleTh(const cv::Mat& magn, cv::Mat& out, float t1, float t2)
-{
-    return 0;
-}
-
-cv::Mat dilation(const cv::Mat image, const cv::Mat se)
-{
-}
-
-cv::Mat erosion(const cv::Mat image, const cv::Mat se)
-{
-}
-
-cv::Mat closing(const cv::Mat image, const cv::Mat se)
-{
-}
-
-cv::Mat opening(const cv::Mat image, const cv::Mat se)
-{
-}
-
-double otsuDeviation(const cv::Mat image, int th)
-{
-}
-
-void lab1(const cv::Mat& image, std::string image_name)
-{
-    cv::Mat new_m = downsampling2x(image);
-    openandwait("downsample2x", new_m, false);
-    /*etc.etc...*/
-}
-
-void lab1a(const cv::Mat& image, std::string image_name)
-{
-    sample(image, image_name);
-}
 
 bool ParseInputs(ArgumentList& args, int argc, char** argv)
 {
@@ -149,82 +108,42 @@ bool ParseInputs(ArgumentList& args, int argc, char** argv)
     return true;
 }
 
-int main(int argc, char** argv)
-{
+int lab4(ArgumentList args){
     std::cout << "----- Esercitazione 4 Edges -----" << std::endl;
 
-    int frame_number = 0;
     char frame_name[256];
     bool exit_loop = false;
     unsigned char key;
-    ArgumentList args;
-
-    //////////////////////
-    // parse argument list:
-    //////////////////////
-
-    if (!ParseInputs(args, argc, argv)) {
-        return 1;
-    }
-
-    //---Lab2---
-    int threshold = 15;
-    int k = 5;
-    float alpha = 0.5;
-    std::vector<cv::Mat> frames(k);
-    //----------
+    
+    float sigma = 0.8;
+    int radius = 2;
 
     while (!exit_loop) {
-        // multi frame case
-        if (args.image_name.find('%') != std::string::npos)
-            sprintf(frame_name, (const char*)(args.image_name.c_str()),
-                frame_number);
-        else // single frame case
-            sprintf(frame_name, "%s", args.image_name.c_str());
-
-        // opening file
+        sprintf(frame_name, "%s", args.image_name.c_str());
+        
         std::cout << "Opening " << frame_name << std::endl;
 
         cv::Mat image;
-        if (args.image_name.find("RGGB") != std::string::npos
-            || args.image_name.find("GBRG") != std::string::npos
-            || args.image_name.find("BGGR") != std::string::npos
-            || args.image_name.find("organs") != std::string::npos)
-            image = cv::imread(frame_name, CV_8UC1);
-        else
-            image = cv::imread(frame_name);
+
+        image = cv::imread(frame_name, CV_8U);
 
         if (image.empty()) {
             std::cout << "Unable to open " << frame_name << std::endl;
             return 1;
         }
 
-        // display image
         openandwait("Original Image", image, false);
 
-        cv::Mat out;
-        /*//---Lab 2---
+        //implementazione
+        matTypeCV(image);
 
-        if (frame_number == 0) {
-                for(int i = 0; i<frames.size(); i++){
-                        frames[i] = cv::Mat(image.rows, image.cols, image.type(), cv::Scalar(0));
-                }
-}
+        cv::Mat out = gaussianBlur(image, sigma, radius);
 
-        out = simpleBgSubtraction(image, threshold);
-
-        out = expRunningAverageBgSubtraction(image, threshold, alpha);
         openandwait("out", out, false);
-        */
-        int th;
-        std::cout << "Insert threshold: ";
-        std::cin >> th;
+        sobel3x3(image);
 
-        out = simpleBin(image, th);
-        openandwait("out", out, false);
 
-        // wait for key or timeout
-
+        //key management
         unsigned char key = cv::waitKey(args.m_wait);
         std::cout << "key " << int(key) << std::endl;
 
@@ -234,10 +153,88 @@ int main(int argc, char** argv)
         //  - step back
         //  - step forward
         //  - loop on the same frame
+        if (key == 's')
+            sigma += 0.1;
+
+        std::cout<< "sigma = " << sigma <<std::endl;
+
+        if (key == 'r')
+            radius += 1;
+
+        std::cout<< "radius = " << radius <<std::endl;
+
         if (key == 'q')
             exit_loop = true;
 
-        frame_number++;
     }
+
     return 0;
+}
+int main(int argc, char** argv)
+{
+    
+    ArgumentList args;
+    if (!ParseInputs(args, argc, argv)) {
+        return 1;
+    }
+
+
+/*  
+    char frame_name[256];
+    bool exit_loop = false;
+    unsigned char key;
+    
+    while (!exit_loop) {
+        // multi frame case
+        if (args.image_name.find('%') != std::string::npos)
+            sprintf(frame_name, (const char*)(args.image_name.c_str()),
+                frame_number);
+        else // single frame case 
+            sprintf(frame_name, "%s", args.image_name.c_str());
+
+        // opening file
+        std::cout << "Opening " << frame_name << std::endl;
+
+        cv::Mat image;
+        if (args.image_name.find("RGGB") != std::string::npos
+            || args.image_name.find("GBRG") != std::string::npos
+            || args.image_name.find("BGGR") != std::string::npos
+            || args.image_name.find("organs") != std::string::npos) 
+             image = cv::imread(frame_name, CV_8UC1);
+        else 
+            image = cv::imread(frame_name, CV_8U);
+
+        if (image.empty()) {
+            std::cout << "Unable to open " << frame_name << std::endl;
+            return 1;
+        }
+
+        // display image
+        openandwait("Original Image", image, false);
+        
+        //___implementazione
+
+        sample(image, image_name);
+
+        //___fine implementazione
+    
+        unsigned char key = cv::waitKey(args.m_wait);
+        std::cout << "key " << int(key) << std::endl;
+
+       
+        // here you can implement some looping logic using key value:
+        //  - pause
+        //  - stop
+        //  - step back
+        //  - step forward
+        //  - loop on the same frame
+
+        if (key == 'q')
+            exit_loop = true;
+
+        frame_number++; 
+    } */
+    
+    
+    return lab2(args);
 }

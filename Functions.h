@@ -13,8 +13,23 @@
 // getopt()
 #include <unistd.h>
 
+struct ArgumentList {
+    std::string image_name; //!< image file name
+    int m_wait; //!< waiting time
+};
+
+//---Esercizi Completi---
+
+int lab1a(ArgumentList args);
+int lab1(ArgumentList args); 
+int lab2(ArgumentList args);
+int lab3 (ArgumentList args);
+
 //---UTILITY---
+cv::Mat transpose(const cv::Mat image);
 unsigned char openandwait(const char* windowname, cv::Mat& img, const bool sera);
+std::string type2str(int type);
+void matTypeCV(const cv::Mat M);
 
 //---LAB 1---
 cv::Mat downsampling2x(const cv::Mat image);
@@ -29,7 +44,7 @@ cv::Mat colorShuffle(const cv::Mat image);
 void sample(const cv::Mat image, std::string image_name);
 
 //---LAB 1a---
-cv::Mat myfilter2D(const cv::Mat src, const cv::Mat& krn, cv::Mat& out, int stride);
+cv::Mat conv(const cv::Mat &src, const cv::Mat &krn, int stride);
 
 //---LAB 2---
 
@@ -38,5 +53,7 @@ cv::Mat runningAverageBgSubtraction(const cv::Mat image, std::vector<cv::Mat>& v
 cv::Mat expRunningAverageBgSubtraction(const cv::Mat image, int threshold, float alpha);
 
 //---LAB 3---
+
+cv::Mat simpleBin(const cv::Mat &image, int threshold);
 
 //---LAB 4---
